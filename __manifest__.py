@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : Install All Companions',
-    'version': '17.0.1.0.1',
+    'version': '17.0.1.0.2',
     'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules in topological order.',
     'description': """
 Jinasena_All — Meta-Module
 ==========================
 
-Installing this ONE module triggers Odoo to install all 17 Jinasena
+Installing this ONE module triggers Odoo to install all 18 Jinasena
 companion modules in the correct topological order, resolving all
 declared dependencies automatically.
 
-Modules pulled (17):
+Modules pulled (18):
     - bank-data
     - seed_master_data_and_settings
     - BugFix-Approvals
@@ -29,6 +29,7 @@ Modules pulled (17):
     - Fix-repair
     - Fix-Repair-Wizard-Nav
     - Jinasena_Local_Purchase
+    - Jinasena_Masterdata_Reporting
     - studio_usermodel_migration
 
 Contains no code — only declarative depends. Empty models/, no data
@@ -58,6 +59,7 @@ files. Uninstalling this module leaves the companion modules installed
         # 'Fix-Repair-Clear_DB' — reference-only mini-module (same 'name'
         # as Fix-repair, only 1 view). Redundant with Fix-repair (full).
         'Jinasena_Local_Purchase',
+        'Jinasena_Masterdata_Reporting',  # transitively required by BugFix-Stock/Sales/MRP/Project
         'studio_usermodel_migration',
     ],
     'data': [],
