@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : ERP',
-    'version': '17.0.1.0.21',
+    'version': '17.0.1.0.22',
     'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules in topological order.',
     'description': """
 Jinasena_All — Meta-Module
@@ -61,6 +61,7 @@ files. Uninstalling this module leaves the companion modules installed
         'Jinasena_Local_Purchase',
         'Jinasena_Masterdata_Reporting',  # transitively required by BugFix-Stock/Sales/MRP/Project
         'studio_usermodel_migration',
+        'Jinasena_TestDataMigration',
     ],
     'data': [],
     'installable': True,
