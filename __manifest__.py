@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : ERP',
-    'version': '17.0.1.0.23',
-    'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules in topological order.',
+    'version': '17.0.1.0.24',
+    'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules; upgrading it cascades to every declared dep.',
     'description': """
 Jinasena_All — Meta-Module
 ==========================
