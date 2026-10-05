@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : ERP',
-    'version': '17.0.1.0.43',
+    'version': '17.0.1.0.44',
     'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules; upgrading it cascades to every declared dep.',
     'description': """
 Jinasena_All — Meta-Module
@@ -70,6 +70,9 @@ files. Uninstalling this module leaves the companion modules installed
         # test-env-only modules. Never depend on them from this meta.
     ],
     'data': [],
+    # v17.0.1.0.44: repair Studio server actions broken by the 15->17 migration
+    # on install too (BugFix-Studio-Misc's repairs only ran on upgrade).
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,
     'application': False,
