@@ -73,11 +73,13 @@ def restore_production_active(env):
 
 PREFIX = 'staging_adopt.rebound_copies.'
 # dependants before what they point at
-ORDER = ['base.automation', 'ir.cron', 'ir.ui.menu', 'ir.actions.server', 'ir.actions.report', 'ir.actions.act_window',
+ORDER = ['studio.approval.rule', 'base.automation', 'ir.cron', 'ir.ui.menu', 'ir.actions.server', 'ir.actions.report', 'ir.actions.act_window',
          'mail.template', 'ir.filters', 'ir.default', 'ir.rule', 'ir.model.access', 'ir.ui.view']
 
 
 def _still_used(env, rec):
+    if rec._name == 'studio.approval.rule':
+        return bool(rec.with_context(active_test=False).entry_ids)     # approval history is data
     if rec._name == 'ir.ui.view':
         return bool(rec.with_context(active_test=False).inherit_children_ids)
     if rec._name == 'ir.ui.menu':
@@ -122,6 +124,156 @@ def delete_rebound_copies(env):
                      param.key[len(PREFIX):], deleted, len(kept))
 
 
+# --- remove Studio from production copies --------------------------------------
+
+STUDIO = 'studio_customization'
+OURS = ('BugFix', 'Fix-', 'Jinasena', 'studio_usermodel', 'seed_master', 'bank-data')
+# dependants before what they point at; fields / models / selections are never deleted (live data)
+SWEEP = ['studio.approval.rule', 'base.automation', 'ir.cron', 'ir.ui.menu', 'ir.actions.server', 'ir.actions.report',
+         'ir.actions.act_window', 'ir.actions.client', 'mail.template', 'ir.filters', 'ir.default', 'ir.rule',
+         'ir.model.access', 'ir.ui.view', 'res.groups']
+NEVER_DELETE = ('ir.model', 'ir.model.fields', 'ir.model.fields.selection')
+STUDIO_REPORT = 'staging_adopt.studio_removal'
+
+
+def _replacements(env):
+    """(model, production id, create_date) -> repo xmlid, from every installed
+    repo's staging_adopt_map.json (built from the SHIPPED_ARTIFACTS report)."""
+    out = {}
+    for module in env['ir.module.module'].sudo().search([('state', '=', 'installed')]).mapped('name'):
+        path = get_module_path(module, display_warning=False)
+        path = path and os.path.join(path, 'staging_adopt_map.json')
+        if not path or not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as f:
+            for xmlid, by_model in json.load(f).items():
+                for model, sources in by_model.items():
+                    for n, created in sources:
+                        out.setdefault((model, n, created), '%s.%s' % (module, xmlid))
+    return out
+
+
+def _referring_fields(env, model):
+    relations = [model] + (['ir.actions.actions'] if model.startswith('ir.actions.') else [])
+    for field in env['ir.model.fields'].sudo().search([
+            ('relation', 'in', relations), ('ttype', 'in', ('many2one', 'many2many')), ('store', '=', True)]):
+        if field.model not in env or field.model == 'ir.model.data':
+            continue
+        Model = env[field.model].sudo().with_context(active_test=False)
+        if Model._abstract or Model._transient or field.name not in Model._fields:
+            continue
+        yield Model, field
+
+
+def _references(env, model, res_id):
+    """What (outside ir.model.data) still points at model,res_id."""
+    found = []
+    for Model, field in _referring_fields(env, model):
+        n = Model.search_count([(field.name, '=', res_id)])
+        if n:
+            found.append('%s.%s (%d)' % (field.model, field.name, n))
+    if model.startswith('ir.actions.'):
+        n = env['ir.ui.menu'].sudo().with_context(active_test=False).search_count(
+            [('action', '=', '%s,%d' % (model, res_id))])
+        if n:
+            found.append('ir.ui.menu.action (%d)' % n)
+    return found
+
+
+def _migrate_references(env, model, old_id, new_id):
+    """Data migration: move every stored many2one / many2many reference (users
+    in a group, approval entries, child views, menus, buttons ...) from the
+    Studio record to the repo-owned record that replaced it."""
+    for Model, field in _referring_fields(env, model):
+        recs = Model.search([(field.name, '=', old_id)])
+        if recs:
+            recs.write({field.name: new_id} if field.ttype == 'many2one'
+                       else {field.name: [(3, old_id), (4, new_id)]})
+    if model.startswith('ir.actions.'):
+        menus = env['ir.ui.menu'].sudo().with_context(active_test=False).search(
+            [('action', '=', '%s,%d' % (model, old_id))])
+        if menus:
+            menus.write({'action': '%s,%d' % (model, new_id)})
+
+
+def remove_studio(env):
+    """Leave nothing owned by Studio on a production copy, carefully.
+
+    * Repo-owned records that still carry their old studio_customization
+      xmlid next to the repo's: only the Studio xmlid is removed (the record
+      is the repo's now).
+    * Records Studio shares with an Odoo module (base, web_studio, ...) and
+      records entered by hand (no xmlid / __export__ only): not touched.
+    * Pure Studio records (owned by studio_customization only):
+        - replaced by a repo record (same production id + create_date in the
+          SHIPPED_ARTIFACTS map): their data is migrated first - every
+          reference moves to the repo record - then the Studio record is
+          deleted;
+        - no repo record to migrate to: never deleted (it is production
+          functionality the port missed); reported under 'not_ported' to be
+          ported.
+    * Fields, models and selection values are never deleted (live data); any
+      still Studio-only are reported.
+    One savepoint per record; full report in ir.config_parameter
+    staging_adopt.studio_removal.
+    """
+    cr = env.cr
+    IMD = env['ir.model.data'].sudo()
+    repl = _replacements(env)
+    report = {'studio_xmlid_removed': 0, 'migrated_then_deleted': {}, 'not_ported': {},
+              'kept_after_error': {}, 'never_deleted': {}}
+    rows = IMD.search_read([('module', '=', STUDIO)], ['model', 'res_id'])
+    owners = {}
+    for row in IMD.search_read([('model', 'in', sorted({r['model'] for r in rows}))], ['module', 'model', 'res_id']):
+        owners.setdefault((row['model'], row['res_id']), set()).add(row['module'])
+    # 1. repo-owned records: drop the Studio xmlid only
+    shared = IMD.browse([r['id'] for r in rows
+                         if any(m.startswith(OURS) for m in owners.get((r['model'], r['res_id']), ()))])
+    report['studio_xmlid_removed'] = len(shared)
+    shared.unlink()
+    # 2. pure Studio records
+    pure = {}
+    for r in rows:
+        if owners.get((r['model'], r['res_id']), set()) <= {STUDIO, '__export__'}:
+            pure.setdefault(r['model'], set()).add(r['res_id'])
+    for model in NEVER_DELETE:
+        if pure.get(model):
+            report['never_deleted'][model] = sorted(pure.pop(model))
+    for model in SWEEP + sorted(set(pure) - set(SWEEP)):
+        if model not in pure or model not in env:
+            continue
+        Model = env[model].sudo().with_context(active_test=False)
+        for rec in Model.browse(sorted(pure[model], reverse=True)).exists():
+            created = rec.create_date.strftime('%Y-%m-%d %H:%M:%S') if rec.create_date else ''
+            target = repl.get((model, rec.id, created))
+            target = target and env.ref(target, raise_if_not_found=False)
+            label = [rec.id, rec.display_name]
+            try:
+                with cr.savepoint():
+                    if model == 'studio.approval.rule':
+                        # approval history cannot move to a rule with other settings; adoption handles these
+                        report['not_ported'].setdefault(model, []).append(label + ['approval rule: report only'])
+                        continue
+                    if target and target._name == model and target.id != rec.id:
+                        _migrate_references(env, model, rec.id, target.id)
+                        rec.unlink()
+                        report['migrated_then_deleted'].setdefault(model, []).append(label + [target.id])
+                        continue
+                    # no repo record to migrate to: not ported yet - never delete working functionality
+                    report['not_ported'].setdefault(model, []).append(label + _references(env, model, rec.id))
+            except Exception as e:  # noqa: BLE001 - keep it, report it
+                report['kept_after_error'].setdefault(model, []).append(label + ['error: %s' % e])
+    env['ir.config_parameter'].sudo().set_param(STUDIO_REPORT, json.dumps(report, default=str))
+    _logger.info("Jinasena_All remove_studio: Studio xmlid removed from %d repo-owned records; "
+                 "migrated then deleted %s; NOT PORTED (kept) %s; kept after error %s; never deleted %s",
+                 report['studio_xmlid_removed'],
+                 {m: len(v) for m, v in report['migrated_then_deleted'].items()},
+                 {m: len(v) for m, v in report['not_ported'].items()},
+                 {m: len(v) for m, v in report['kept_after_error'].items()},
+                 {m: len(v) for m, v in report['never_deleted'].items()})
+
+
 def post_init_hook(env):
     repair_studio_server_actions(env)
     restore_production_active(env)
+    remove_studio(env)

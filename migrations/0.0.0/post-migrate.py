@@ -3,7 +3,8 @@
 Jinasena_All depends on all of them): put production's active flag back on
 the Studio originals the repos took over, then delete the repo-created
 duplicates the repos archived (hooks.restore_production_active /
-hooks.delete_rebound_copies). ORM only."""
+hooks.delete_rebound_copies), then remove what is left of Studio
+(hooks.remove_studio). ORM only."""
 import importlib.util
 import os
 
@@ -20,3 +21,4 @@ def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
     hooks.restore_production_active(env)
     hooks.delete_rebound_copies(env)
+    hooks.remove_studio(env)
