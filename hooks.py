@@ -58,17 +58,50 @@ def restore_production_active(env):
     whose active flag differs from the repo's; put production's flag back."""
     Param = env['ir.config_parameter'].sudo()
     for param in Param.search([('key', '=like', KEEP_ACTIVE + '%')]):
-        restored = 0
+        restored, failed = 0, []
         for model, res_id, active in json.loads(param.value or '[]'):
             if model not in env:
                 continue
             rec = env[model].sudo().with_context(active_test=False).browse(res_id).exists()
             if rec and rec.active != active:
-                rec.active = active
-                restored += 1
-        _logger.info("Jinasena_All: %s restored production active flag on %d records",
-                     param.key[len(KEEP_ACTIVE):], restored)
-        param.value = '[]'
+                try:
+                    with env.cr.savepoint():
+                        rec.active = active
+                    restored += 1
+                except Exception as e:  # noqa: BLE001 - e.g. a view that no longer validates
+                    failed.append([model, res_id, active])
+                    _logger.warning("Jinasena_All: could not restore active=%s on %s,%s: %s", active, model, res_id, e)
+        _logger.info("Jinasena_All: %s restored production active flag on %d records, %d failed",
+                     param.key[len(KEEP_ACTIVE):], restored, len(failed))
+        param.value = json.dumps(failed)
+
+
+PARKED = 'staging_adopt.parked_views'
+
+
+def reactivate_parked_views(env):
+    """Switch back on the Studio child views the repos archived while rewriting the
+    views they took over (staging_adopt._park_studio_children). Runs after every
+    repo has loaded, so all fields exist. One savepoint each; failures stay
+    archived and listed in the parameter."""
+    Param = env['ir.config_parameter'].sudo()
+    parked = json.loads(Param.get_param(PARKED) or '[]')
+    if not parked:
+        return
+    Views = env['ir.ui.view'].sudo().with_context(active_test=False)
+    failed = []
+    for view in Views.browse(parked).exists():
+        if view.active:
+            continue
+        try:
+            with env.cr.savepoint():
+                view.active = True
+        except Exception as e:  # noqa: BLE001
+            failed.append(view.id)
+            _logger.warning("Jinasena_All: parked view %s (%s) could not be switched back on: %s", view.id, view.name, e)
+    Param.set_param(PARKED, json.dumps(failed))
+    _logger.info("Jinasena_All: switched %d parked Studio views back on, %d failed: %s",
+                 len(parked) - len(failed), len(failed), failed)
 
 
 PREFIX = 'staging_adopt.rebound_copies.'
@@ -275,5 +308,6 @@ def remove_studio(env):
 
 def post_init_hook(env):
     repair_studio_server_actions(env)
+    reactivate_parked_views(env)
     restore_production_active(env)
     remove_studio(env)

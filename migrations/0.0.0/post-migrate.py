@@ -19,6 +19,7 @@ def migrate(cr, version):
     hooks = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(hooks)
     env = api.Environment(cr, SUPERUSER_ID, {})
+    hooks.reactivate_parked_views(env)
     hooks.restore_production_active(env)
     hooks.delete_rebound_copies(env)
     hooks.remove_studio(env)
