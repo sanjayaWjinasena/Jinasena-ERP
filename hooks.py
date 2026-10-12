@@ -44,5 +44,11 @@ def repair_studio_server_actions(env):
         _logger.info("Jinasena_All: ran server-action repair %s", version)
 
 
+# upgrade-testing branch: this branch installs functions only onto an existing database.
+# Steps that write or seed business/config data are skipped while SEED_DATA is False.
+SEED_DATA = False
+
+
 def post_init_hook(env):
-    repair_studio_server_actions(env)
+    if SEED_DATA:
+        repair_studio_server_actions(env)
