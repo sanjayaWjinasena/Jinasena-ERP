@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : ERP',
     'version': '17.0.1.0.44',

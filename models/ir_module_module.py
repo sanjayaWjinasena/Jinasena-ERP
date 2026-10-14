@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Cascade-upgrade override for the Jinasena_All meta module.
 
 When the user clicks Upgrade on Jinasena_All (or triggers

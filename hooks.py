@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Install-time repair of the Studio server actions broken by the 15->17
 migration (v17.0.1.0.44).
 
