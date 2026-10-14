@@ -9,14 +9,15 @@ Rationale: Odoo's stock upgrade cascades DOWNWARD to reverse-deps, not
 UPWARD to deps. This override closes that gap for the specific case of the
 Jinasena_All meta.
 """
+
 from odoo import models
 from odoo.modules.module import load_information_from_description_file
 
-META_MODULE = 'Jinasena_All'
+META_MODULE = "Jinasena_All"
 
 
 class IrModuleModule(models.Model):
-    _inherit = 'ir.module.module'
+    _inherit = "ir.module.module"
 
     def _jinasena_all_expand(self):
         """If this recordset includes Jinasena_All, return the same set
@@ -28,18 +29,22 @@ class IrModuleModule(models.Model):
             manifest = load_information_from_description_file(META_MODULE)
         except Exception:
             return self
-        dep_names = list(manifest.get('depends') or [])
+        dep_names = list(manifest.get("depends") or [])
         if not dep_names:
             return self
-        installed_deps = self.sudo().search([
-            ('name', 'in', dep_names),
-            ('state', '=', 'installed'),
-        ])
+        installed_deps = self.sudo().search(
+            [
+                ("name", "in", dep_names),
+                ("state", "=", "installed"),
+            ]
+        )
         # Union keeps self's env, so the sudo() above does not leak out.
         return self | installed_deps
 
     def button_immediate_upgrade(self):
-        return super(IrModuleModule, self._jinasena_all_expand()).button_immediate_upgrade()
+        return super(
+            IrModuleModule, self._jinasena_all_expand()
+        ).button_immediate_upgrade()
 
     def button_upgrade(self):
         return super(IrModuleModule, self._jinasena_all_expand()).button_upgrade()

@@ -15,6 +15,7 @@ the same three scripts here covers the actions of every repo (BugFix-
 Maintenance included, which loads after BugFix-Studio-Misc). Each script
 touches only rows that are still broken. ORM only.
 """
+
 import importlib.util
 import logging
 import os
@@ -23,23 +24,27 @@ from odoo.modules.module import get_module_path
 
 _logger = logging.getLogger(__name__)
 
-REPAIRS = ('17.0.0.0.109', '17.0.0.0.110', '17.0.0.0.111')
+REPAIRS = ("17.0.0.0.109", "17.0.0.0.110", "17.0.0.0.111")
 
 
 def repair_studio_server_actions(env):
-    base = get_module_path('BugFix-Studio-Misc')
+    base = get_module_path("BugFix-Studio-Misc")
     if not base:
-        _logger.warning("Jinasena_All: BugFix-Studio-Misc not found; server-action repair skipped")
+        _logger.warning(
+            "Jinasena_All: BugFix-Studio-Misc not found; server-action repair skipped"
+        )
         return
     for version in REPAIRS:
-        path = os.path.join(base, 'migrations', version, 'post-migrate.py')
+        path = os.path.join(base, "migrations", version, "post-migrate.py")
         if not os.path.exists(path):
             _logger.warning("Jinasena_All: repair script %s missing", path)
             continue
-        spec = importlib.util.spec_from_file_location('jinasena_all_repair_%s' % version.replace('.', '_'), path)
+        spec = importlib.util.spec_from_file_location(
+            "jinasena_all_repair_%s" % version.replace(".", "_"), path
+        )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        module.migrate(env.cr, 'jinasena_all_install')   # any non-empty version runs it
+        module.migrate(env.cr, "jinasena_all_install")  # any non-empty version runs it
         _logger.info("Jinasena_All: ran server-action repair %s", version)
 
 
