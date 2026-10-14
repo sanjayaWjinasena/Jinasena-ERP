@@ -36,7 +36,8 @@ class IrModuleModule(models.Model):
             ('name', 'in', dep_names),
             ('state', '=', 'installed'),
         ])
-        return (self | installed_deps).with_context(self.env.context)
+        # Union keeps self's env, so the sudo() above does not leak out.
+        return self | installed_deps
 
     def button_immediate_upgrade(self):
         return super(IrModuleModule, self._jinasena_all_expand()).button_immediate_upgrade()
