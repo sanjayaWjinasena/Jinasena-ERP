@@ -35,9 +35,7 @@
         # NOTE: Jinasena_TestDataMigration + Jinasena_MasterData_* are
         # test-env-only modules. Never depend on them from this meta.
     ],
-    "data": [],
     # v17.0.1.0.44: repair Studio server actions broken by the 15->17 migration
     # on install too (BugFix-Studio-Misc's repairs only ran on upgrade).
     "post_init_hook": "post_init_hook",
-    "application": False,
 }
