@@ -10,8 +10,12 @@ UPWARD to deps. This override closes that gap for the specific case of the
 Jinasena_All meta.
 """
 
+import logging
+
 from odoo import models
 from odoo.modules.module import load_information_from_description_file
+
+_logger = logging.getLogger(__name__)
 
 META_MODULE = "Jinasena_All"
 
@@ -28,6 +32,11 @@ class IrModuleModule(models.Model):
         try:
             manifest = load_information_from_description_file(META_MODULE)
         except Exception:
+            _logger.warning(
+                "Could not read the %s manifest; upgrading it alone.",
+                META_MODULE,
+                exc_info=True,
+            )
             return self
         dep_names = list(manifest.get("depends") or [])
         if not dep_names:
