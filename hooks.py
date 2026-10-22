@@ -40,7 +40,7 @@ def repair_studio_server_actions(env):
             _logger.warning("Jinasena_All: repair script %s missing", path)
             continue
         spec = importlib.util.spec_from_file_location(
-            "jinasena_all_repair_%s" % version.replace(".", "_"), path
+            "jinasena_all_repair_{}".format(version.replace(".", "_")), path
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
