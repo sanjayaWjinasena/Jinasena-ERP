@@ -1,7 +1,8 @@
 {
     "name": "Jinasena : Meta : ERP",
     "version": "17.0.1.0.44",
-    "summary": "Meta-module: installing this pulls all 18 Jinasena companion modules; upgrading it cascades to every declared dep.",
+    "summary": "Meta-module: installing this pulls all 18 Jinasena companion modules; "
+    "upgrading it cascades to every declared dep.",
     "author": "Jinasena Agricultural Machinery (Pvt) Ltd.",
     "category": "Extra Tools",
     "license": "LGPL-3",
@@ -25,7 +26,8 @@
         # 'Fix-Repair-Clear_DB' — reference-only mini-module (same 'name'
         # as Fix-repair, only 1 view). Redundant with Fix-repair (full).
         "Jinasena_Local_Purchase",
-        "Jinasena_Masterdata_Reporting",  # transitively required by BugFix-Stock/Sales/MRP/Project
+        # transitively required by BugFix-Stock/Sales/MRP/Project
+        "Jinasena_Masterdata_Reporting",
         "studio_usermodel_migration",
         # 3rd-party; needs `dropbox` Python pkg (shipped via sibling
         # requirements.txt). Depending on it here means a cascade upgrade
