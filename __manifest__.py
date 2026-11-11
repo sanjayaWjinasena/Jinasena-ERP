@@ -1,6 +1,6 @@
 {
     "name": "Jinasena : Meta : ERP",
-    "version": "17.0.1.0.44",
+    "version": "17.0.1.0.45",
     "summary": "Meta-module: installing this pulls all 18 Jinasena companion modules; "
     "upgrading it cascades to every declared dep.",
     "author": "Jinasena Agricultural Machinery (Pvt) Ltd.",
