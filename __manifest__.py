@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Jinasena : Meta : ERP',
-    'version': '17.0.1.0.21',
-    'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules in topological order.',
+    'version': '17.0.1.0.44',
+    'summary': 'Meta-module: installing this pulls all 18 Jinasena companion modules; upgrading it cascades to every declared dep.',
     'description': """
 Jinasena_All — Meta-Module
 ==========================
@@ -61,8 +61,18 @@ files. Uninstalling this module leaves the companion modules installed
         'Jinasena_Local_Purchase',
         'Jinasena_Masterdata_Reporting',  # transitively required by BugFix-Stock/Sales/MRP/Project
         'studio_usermodel_migration',
+        # 3rd-party; needs `dropbox` Python pkg (shipped via sibling
+        # requirements.txt). Depending on it here means a cascade upgrade
+        # of Jinasena_All installs it + unblocks the dropbox.auth.code
+        # model / view / ACL audit items.
+        'auto_database_backup',
+        # NOTE: Jinasena_TestDataMigration + Jinasena_MasterData_* are
+        # test-env-only modules. Never depend on them from this meta.
     ],
     'data': [],
+    # v17.0.1.0.44: repair Studio server actions broken by the 15->17 migration
+    # on install too (BugFix-Studio-Misc's repairs only ran on upgrade).
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,
     'application': False,

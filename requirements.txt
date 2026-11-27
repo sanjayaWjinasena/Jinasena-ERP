@@ -1,0 +1,9 @@
+# Python deps for 3rd-party modules in the Jinasena stack.
+# auto_database_backup (Cybrosys) declares all 5 as external_dependencies.
+# Odoo's check fails module install if ANY is missing, so ship all —
+# even for backup targets we don't actively use.
+dropbox
+pyncclient
+boto3
+nextcloud-api-wrapper
+paramiko
